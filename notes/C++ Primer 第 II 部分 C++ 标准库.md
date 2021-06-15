@@ -300,3 +300,139 @@ void biggies(vector<string> &words, vector<string>::size_type sz,
 - 参数绑定 `P354 - P357`
 - `iostream` 迭代器 `P359 - P362`
 - 泛型算法结构 `P365 - P369`
+
+### 第 11 章 关联容器
+
+关联容器按 3 个维度分成 8 种：是一个 `map` 或 `set`，`map` 中的元素是键值对，`set` 里只有关键字（以下略作键）；允许或不允许重复键，允许重复的容器的名字中都包含单词 `multi`；按顺序或不按顺序保存元素，其中无序容器都以 `unordered` 开头，并使用哈希函数组织元素
+
+`map` 和 `multimap` 定义在头文件 `<map>` 中，`unordered_map` 和 `unordered_multimap` 定义在头文件 `<unordered_map>` 中，那四种 `set` 类似
+
+关联容器不支持顺序容器那种位置相关的操作（比如 `push_back` 之类的）
+
+关联容器的迭代器都是双向的
+
+关联容器对其关键字类型有一些限制：对于四种有序容器来说，关键字类型必须定义元素的比较方法，默认情况下标准库使用关键字类型的 `<` 运算符来比较两个关键字。无序容器待会再写
+
+接上条，插一嘴：传递给排序算法的可调用对象也得满足和关联容器中关键字一样的类型要求
+
+可以提供自己定义的操作来代替关键字上的 `<` 运算符：所提供的操作必须在关键字类型上定义一个 *严格弱序*，但是这玩意解释起来太麻烦了就理解成小于等于就行了，或者，**在实际编程中，如果一个类型定义了 “行为正常” 的 `<` 运算符，则它可以用作关键字类型**
+
+用来组织一个容器中元素的操作的类型也是该容器类型的一部分，要在定义关联容器类型时提供此操作的类型，如下例所示：
+
+```cpp
+struct Book {
+  int isbn;
+};
+
+bool compareBook(const Book &lhs, const Book &rhs) {
+  return lhs.isbn < rhs.isbn;
+}
+
+multiset<Book, decltype(compareBook) *> bookstore(compareBook);
+// 注：decltype() 返回实际类型，加上 * 来获取指针类型
+//     后面的函数名字会自动转换成指针，当然写 &compareBook 也是一样的
+```
+
+`pair` 这个类型：定义在头文件 `<utility>` 中，保存两个数据成员。与容器类似，`pair` 是一个用来生成特定类型的模板，定义一个 `pair` 时要提供两个类型名（不要求一样），其数据成员具有对应的类型，**`pair` 的默认构造函数对其数据成员进行值初始化**
+
+`.first` 和 `.second` 分别返回一个 `pair` 的第一个 / 第二个（公有）数据成员
+
+`pair` 的大小关系按字典序，依赖元素的 `<` 运算符来实现：当 `p1.first < p2.first`，或 `!(p1.first < p2.first) && p1.second < p2.second` 时，`p1 < p2` 为 `true`
+
+当 `first` 和 `second` 成员分别相等时，两个 `pair` 相等
+
+`make_pair` 可用来生成 `pair` 对象，作函数返回值时亦可对返回值进行列表初始化，如下：
+
+```cpp
+pair<string, int> process(vector<string> &v) {
+  // 处理 v
+
+  if (!v.empty()) {
+    return {v.back(), v.back().size()};  // 列表初始化
+    // return pair<string, int>(v.back(), v.back().size());
+    // return make_pair(v.back(), v.back().size());
+    // 以上 3 种写法等价
+  } else {
+    return pair<string, int>();  // 隐式构造返回值
+  }
+}
+```
+
+关联容器有三种额外的类型别名：`key_type`（键的类型），`mapped_type`（值的类型，四种 `map` 才有），`value_type`（对 `set` 来说，和 `key_type` 一样；对 `map` 来说，为 `pair<const key_type, mapped_type>`，注：由于我们不能改变一个元素的关键字，所以这些 `pair` 的关键字部分是 `const` 的）
+
+解引用一个关联容器迭代器时，会得到一个类型为容器的 `value_type` 的值的引用，**再次强调：那四种 `map` 的 `value_type` 是一个 `pair` ，我们可以改变 `pair` 的值，但是不能改变关键字成员的值**
+
+四种 `set` 的迭代器是 `const` 的：不管是 `iterator` 类型还是 `const_iterator` 类型，都只允许只读访问 `set` 中的元素，即 `set` 中的键也是 `const` 的
+
+关联容器也可以支持 `begin` 和 `end` 操作，基于此遍历有序容器得到的结果是按关键字升序排列的
+
+一般不对关联容器使用泛型算法，因为键是 `const` 意味着不能将关联容器传递给修改或重排元素的算法（所以顶多也就是用用 `copy`）
+
+关联容器有一个名为 `find` 的成员，它通过一个给定的关键字直接获取元素，相比于顺序查找的泛型 `find` 算法要快很多
+
+关联容器也有 `insert` 和 `emplace` 操作，和顺序容器的差不多不细写了
+
+**注意：向四种 `map` 中进行 `insert` 操作时，元素类型是 `pair`**
+
+**特殊的：对于非 `multi` 的关联容器，添加单一元素的 `insert`（或 `emplace`，下略）返回一个 `pair`**，其 `first` 成员是一个迭代器，指向具有给定关键字的元素，`second` 成员是一个 `bool` 值，支出元素是插入成功还是已经存在于容器中：如果键已存在，则 `insert` 什么也不做，那个 `bool` 值是 `false`，如果键不存在，那就插入，那个 `bool` 值是 `true`
+
+关联容器三个版本的 `erase` 也跟顺序容器的差不多不细写了（好耶），但关联容器还提供一个额外的 `erase`，这个得写（不好耶）：它接受一个 `key_type` 参数，删除所有匹配给定键的元素（如果存在的话），返回实际删除的元素的数量（也就是说对非 `multi` 的关联容器执行这个操作总返回 0 或 1）
+
+`map` 和 `unordered_map` 提供下标运算符和一个对应的 `at` 函数（四种 `set` 没有是因为没有值，另外两种 `map` 没有是因为一个键可能对应多个值）
+
+先说 `at`：带参数检查，键不存在就抛出一个 `out_of_range` 异常
+
+**`map` 和 `unordered_map` 的下标运算符有两个特殊的地方：其一是如果键不存在，那就插入一个新的进去**（所以只能对非 `const` 的两种`map` 或 `unordered_map` 使用下标操作）；**其二是它返回的类型和迭代器解引用出来的类型不一样**（对其他支持下标运算符的容器来说是一样的）：在这里，解引用迭代器返回一个 `value_type` 对象，而下标运算符返回一个 `mapped_value` 对象
+
+关联容器提供多个查找一个指定元素的方法，最简单的两个是 `find` 和 `count`（对 `multi` 的关联容器，`count` 会做计数工作，所以如果无需计数还是用 `find`），如下：
+
+```cpp
+set<int> iset = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+iset.find(1);    // 返回一个迭代器，指向 key == 1 的元素
+iset.find(11);   // 返回一个迭代器，其值等于 iset.end()
+iset.count(1);   // 返回 1
+iset.count(11);  // 返回 0
+```
+
+由于 `map` 和 `unordered_map` 的下标运算符有严重的副作用，所以如果想查找键值对而不想改变该 `map` 和 `unordered_map`，应该使用 `find`：
+
+```cpp
+if (word_count.find("foobar") == word_count.end())
+  cout << "foobar is not in the map" << endl;
+```
+
+**如果一个 `multimap` 或 `multiset` 中有多个元素具有给定关键字，那么这些元素在容器中会相邻存储**
+
+基于上条，我们有：`lower_bound(k)`，返回一个迭代器，指向第一个关键字不小于 k 的元素，`upper_bound(k)`，返回一个迭代器，指向第一个关键字大于 k 的元素，`equal_range(k)`，返回一个迭代器 `pair`，表示关键字等于 k 的元素的范围，若 k 不存在，则 `pair` 的两个成员都等于 `end()`
+
+四种无序容器不是使用比较运算符来组织元素，而是使用一个哈希函数和关键字类型的 `==` 运算符
+
+无序容器在存储上组织为一组桶，每个桶保存零或多个元素，无序容器使用一个哈希函数将元素映射到桶。另外如果容器允许重复键，则具有相同键的元素会在一个桶里。无序容器还提供了一组管理桶的函数
+
+无序容器对元素的键类型要求很特殊：无序容器使用键的 `==` 运算符来比较元素，还使用一个 `hash<key_type>` 类型的对象来生成每个元素的哈希值。标注库为内置类型（包括指针）提供了 `hash` 模板，还为 *一些* 标准库类型（ `string` 和智能指针）定义了 `hash`，因此我们可以定义关键字是内置类型、`string` 和智能指针的无序容器，但 **不能直接键类型是自定义累类型的无序容器**：不能直接使用 `hash` 模板，而必须提供自己的 `hash` 模板版本（见笔记第 III 部分的模板特例化）
+
+接上条：类似于为有序容器重载键类型的默认比较操作，也可以提供函数来代替 `==` 运算符和哈希值计算函数，如下：
+
+```cpp
+struct Book {
+  int isbn;
+};
+
+size_t hasher(const Book &book) { return hash<int>()(book.isbn); }
+
+bool areSameBook(const Book &lhs, const Book &rhs) {
+  return lhs.isbn == rhs.isbn;
+}
+
+using Book_multiset =
+    unordered_multiset<Book, decltype(hasher) *, decltype(areSameBook) *>;
+
+Book_multiset bookstore(42, hasher, areSameBook);
+```
+
+接上条：如果类定义了 `==` 运算符，那可以只重载哈希函数
+
+补充：
+
+- 严格弱序 `P378`
+- 无序容器管理操作 `P395`
