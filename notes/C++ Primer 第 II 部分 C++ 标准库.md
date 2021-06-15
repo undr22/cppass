@@ -401,7 +401,7 @@ if (word_count.find("foobar") == word_count.end())
   cout << "foobar is not in the map" << endl;
 ```
 
-**如果一个 `multimap` 或 `multiset` 中有多个元素具有给定关键字，那么这些元素在容器中会相邻存储**
+**如果一个 `multimap` 或 `multiset` 中有多个元素具有给定关键字，那么这些元素在容器中会相邻存储（无序版本的那两个也是）**
 
 基于上条，我们有：`lower_bound(k)`，返回一个迭代器，指向第一个关键字不小于 k 的元素，`upper_bound(k)`，返回一个迭代器，指向第一个关键字大于 k 的元素，`equal_range(k)`，返回一个迭代器 `pair`，表示关键字等于 k 的元素的范围，若 k 不存在，则 `pair` 的两个成员都等于 `end()`
 
