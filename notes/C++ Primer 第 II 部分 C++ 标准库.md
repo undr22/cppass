@@ -364,7 +364,9 @@ pair<string, int> process(vector<string> &v) {
 
 四种 `set` 的迭代器是 `const` 的：不管是 `iterator` 类型还是 `const_iterator` 类型，都只允许只读访问 `set` 中的元素，即 `set` 中的键也是 `const` 的
 
-关联容器也支持 `begin` 和 `end` 操作，基于此，遍历有序容器得到的结果是按关键字升序排列的
+关联容器也支持 `begin` 和 `end` 操作
+
+迭代器按关键字升序遍历有序关联容器
 
 一般不对关联容器使用泛型算法，因为键是 `const` 意味着不能将关联容器传递给修改或重排元素的算法（所以顶多也就是用用 `copy`）
 
