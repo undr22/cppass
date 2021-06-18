@@ -670,9 +670,63 @@ for (size_t i = 0; i != 10; ++i) *(sp.get() + i) = i;
 sp.reset(); // 使用我们提供的 lambda 释放数组，它使用 delete[]
 ```
 
-/* 未完成：`allocator` 类 */
+`new` 干两件事：内存分配和对象构造。`delete` 也干两件事：对象析构和内存释放。所以有时候分配一大块内存时，最好使用 `allocator` 类按需构造来避免不必要的开销
+
+接上条，其实 `allocator` 类还有一个使用场景：没有默认构造函数的类不能动态分配数组……
+
+`allocator` 类定义在头文件 `<memory>` 里，也是个模板类，`allocator` 对象分配的内存是未构造的，它会根据给定的对象类型来确定恰当的内存大小和对其位置
+
+麻，码：
+
+```cpp
+allocator<string> alloc;           // 可以分配 string 的 allocator 对象
+auto const p = alloc.allocate(5);  // 分配 5 个初始化的 string
+
+// construct 成员函数接受一个指针和零或多个额外参数
+//   在指定位置构造一个元素，额外参数用来初始化构造对象
+auto q = p;                     // q 指向最后构造元素之后的位置
+alloc.construct(q++);           // *q 为空字符串
+alloc.construct(q++, 10, 'c');  // *q 为 "cccccccccc"
+alloc.construct(q++, "hi");     // *q 为 "hi"
+
+// 不能在未构造对象时就使用原始内存！
+cout << *p << endl;  // 行
+cout << *q << endl;  // 不行：q 指向未构造的内存
+
+// destroy 可以销毁 **已构造** 的元素
+//   它接受一个指针，对指向的对象执行析构函数
+while (q != p) alloc.destroy(--q);
+
+// 元素被销毁后，就可以重新使用这部分内存，或通过 deallocate 归还给系统
+//   传递给 deallocate 的指针不能为空，它必须指向 allocate 分配的内存
+//   传递给 deallocate 的大小参数必须与 allocate 分配时的大小一致
+alloc.deallocate(p, 5);
+```
+
+`allocator` 类还有两个伴随算法（各有两个版本，都在头文件 `<memory>` 里），可以在未初始化的内存中创建对象（行为类似 `copy` 和 `fill`，但事实上都是在指定位置构造元素），简单示例：
+
+```cpp
+vector<int> vi{0, 1, 2, 3, 4};
+allocator<int> alloc;
+
+// 分配比 vi 中元素所占空间大一倍的动态内存
+auto p = alloc.allocate(vi.size() * 2);
+
+// 通过拷贝 vi 中的元素来构造从 p 开始的元素
+auto q = uninitialized_copy(vi.begin(), vi.end(), p);
+// 注：两个 copy 算法的目的位置迭代器必须指向未构造的内存
+//   它们返回一个指针，指向最后构造元素之后的位置
+
+// 将剩余元素初始化为 42；
+uninitialized_fill_n(q, vi.size(), 42);
+// 注：两个填充算法指向目的位置的指针不必指向未构造的内存
+
+// 我实在是搞不明白他们为什么要把这些函数和类名起得又臭又长……
+//   （参数设置也不敢恭维……）
+```
 
 补充：
 
 - 智能指针和异常 `P415 - P417`
 - `weak_ptr` `P420 - P422`
+- `allocator` 算法 `P429`
