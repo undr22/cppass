@@ -115,6 +115,7 @@ auto func(int i) -> int (*)[10];
 
 int odd[] = {1, 3, 5, 7, 9};
 int even[] = {0, 2, 4, 6, 8};
+
 // 返回一个指针，该指针指向含有 5 个整数的数组
 decltype(odd) *arrPtr(int i) {
     return (i % 2) ? &odd : &even; // 返回一个指向数组的指针
