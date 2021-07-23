@@ -258,6 +258,72 @@ HasPtr &HasPtr::operator=(HasPtr rhs) {
 
 与上条类似：在 move ctor 和 move operator= 这些类实现代码之外的地方，**仅在确信需要移动操作且移动操作安全时，才可以使用 `std::move`**
 
+普通成员函数也可以同时提供拷贝和移动版本：一个接受一个指向 `const` 的左值引用，另一个接受一个指向非 `const` 的右值引用（如标准库的 `push_back` 就是这样）
+
+（**这条和上面那条没关系**）我们在一个对象上调用成员函数的时候一般不管它是左值还是右值：
+
+```cpp
+string s1 = "a value", s2 = "another";
+auto n = (s1 + s2).find('a');
+```
+
+但有的时候会很怪……
+
+```cpp
+s1 + s2 = "What the...";
+```
+
+**这是历史包袱**，但可以通过强制左侧运算对象（`this` 指向的对象）为左值来阻止此类行为。指定 `this` 左值 / 右值属性的方式与定义 `const` 成员函数相同：在参数列表后放一个引用限定符：
+
+```cpp
+class Foo {
+ public:
+  Foo &operator=(const Foo &) &;  // 只能向可修改的左值赋值
+  // Foo 的其他参数
+};
+
+Foo &Foo::operator=(const Foo &rhs) & {
+  // 执行将 rhs 赋予本对象所需的工作
+  return *this;
+}
+```
+
+接上条，引用限定符可以是 `&` 或 `&&`，分别指出 `this` 可以指向一个左值或右值。**与 `const` 限定符类似，引用限定符只能用于（非 `static`）成员函数，且必须同时出现在函数的声明和定义中**
+
+**有 `&` 限定的函数只能用于左值，`&&` 限定的函数只能用于右值**
+
+一个函数可以同时用 `const` 和引用限定，引用限定符必须在 `const` 限定符之后
+
+引用限定符也可以区分重载版本，如下：
+
+```cpp
+class Foo {
+ public:
+  Foo sorted() &&;       // 可用于可改变的右值
+  Foo sorted() const &;  // 可用于任何类型的 Foo
+
+ private:
+  vector<int> data;
+};
+
+// **本对象（而非参数）** 为右值，所以可以原址排序
+Foo Foo::sorted() && {
+  sort(data.begin(), data.end());
+  return *this;
+}
+
+// **本对象（而非参数）** 是 const 或一个左值，不能对其原址排序
+Foo Foo::sorted() const & {
+  Foo ret(*this);                          // 拷贝一个副本
+  sort(ret.data.begin(), ret.data.end());  // 排序副本
+  return ret;                              // 返回副本
+}
+```
+
+接上条，编译器会根据调用成员函数的对象的左值 / 右值属性来确定使用哪个版本
+
+定义 `const` 成员函数时可以定义两个版本：一个有 `const` 限定而另一个没有。但 **对于引用限定的函数，如果定义两个或两个以上同名且参数列表的成员函数，就必须对所有函数都加上引用限定符（或者都不加）**
+
 补充：
 
 - 拷贝控制示例 `P460 - P464`
